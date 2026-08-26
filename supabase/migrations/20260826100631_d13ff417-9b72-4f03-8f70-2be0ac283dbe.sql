@@ -1,0 +1,2 @@
+CREATE POLICY "Evidence readable for report feed" ON storage.objects FOR SELECT TO anon, authenticated USING (bucket_id = 'evidence');
+CREATE POLICY "Signed-in users upload evidence" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'evidence');
