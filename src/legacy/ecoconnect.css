@@ -84,6 +84,10 @@
   .btn-primary:hover{background:var(--green);}
   .btn-outline{background:#fff;border:1.5px solid var(--navy);color:var(--navy);}
   .btn-outline:hover{background:var(--navy);color:#fff;}
+  /* Light outline button for use on the dark hero background. */
+  .btn-outline-light{background:transparent;border:1.5px solid #fff;color:#fff;}
+  .btn-outline-light:hover{background:#fff;color:var(--navy);}
+
   .btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--navy-2);}
   .btn-amber{background:var(--amber);color:#3a2600;}
   .btn-sm{padding:8px 14px;font-size:13px;border-radius:8px;}
