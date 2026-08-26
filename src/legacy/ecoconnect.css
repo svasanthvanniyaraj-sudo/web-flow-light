@@ -80,19 +80,44 @@
     border:none;text-decoration:none;transition:transform .15s ease, box-shadow .15s ease;
   }
   .btn:active{transform:translateY(1px);}
-  .btn-primary{background:var(--green-dark);color:#fff;box-shadow:0 6px 16px rgba(31,122,61,.28);}
+  /* Icons/emoji inherit the button label colour in every state. */
+  .btn, .btn *{color:inherit;}
+
+  .btn-primary,
+  .btn-primary:hover,
+  .btn-primary:focus-visible,
+  .btn-primary:active{color:#fff;}
+  .btn-primary{background:var(--green-dark);box-shadow:0 6px 16px rgba(31,122,61,.28);}
   .btn-primary:hover{background:var(--green);}
+  .btn-primary:active{background:#186231;}
+
   .btn-outline{background:#fff;border:1.5px solid var(--navy);color:var(--navy);}
-  .btn-outline:hover{background:var(--navy);color:#fff;}
+  .btn-outline:hover,
+  .btn-outline:focus-visible{background:var(--navy);color:#fff;}
+  .btn-outline:active{background:var(--navy-2);color:#fff;}
+
   /* Light outline button for use on the dark hero background. */
   .btn-outline-light{background:transparent;border:1.5px solid #fff;color:#fff;}
-  .btn-outline-light:hover{background:#fff;color:var(--navy);}
+  .btn-outline-light:hover,
+  .btn-outline-light:focus-visible{background:#fff;color:var(--navy);}
+  .btn-outline-light:active{background:rgba(255,255,255,.88);color:var(--navy);}
 
   .btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--navy-2);}
+  .btn-ghost:hover,
+  .btn-ghost:focus-visible{background:var(--green-light);border-color:#cdeed6;color:var(--green-dark);}
+  .btn-ghost:active{background:#d8efdf;color:var(--green-dark);}
+
   .btn-amber{background:var(--amber);color:#3a2600;}
+  .btn-amber:hover,
+  .btn-amber:focus-visible{background:#ffc233;color:#3a2600;}
+  .btn-amber:active{background:#e6a100;color:#2e1e00;}
+
   .btn-sm{padding:8px 14px;font-size:13px;border-radius:8px;}
   .btn-block{width:100%;}
-  .btn:disabled{opacity:.55;cursor:not-allowed;}
+  .btn:disabled,
+  .btn:disabled:hover,
+  .btn:disabled:active{opacity:.55;cursor:not-allowed;transform:none;}
+
 
   /* ---------- Hero ---------- */
   .hero{
