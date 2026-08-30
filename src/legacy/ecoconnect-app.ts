@@ -287,10 +287,16 @@ export function initEcoConnect(): () => void {
     }
   }
 
-  // Demo mode: SMS provider is not configured yet, so a fixed sample OTP is used.
-  const SAMPLE_OTP = "123456";
+  // Demo mode: SMS provider is not configured yet, so a random OTP is generated per request.
+  const generateOtp = () => {
+    const bytes = new Uint32Array(1);
+    crypto.getRandomValues(bytes);
+    return String(100000 + (bytes[0] % 900000));
+  };
+  let currentOtp = "";
   const demoEmail = (mobile: string) => `user${mobile}@ecoconnect.demo`;
   const demoPassword = (mobile: string) => `EcoConnect#${mobile}`;
+
 
   async function sendOtp() {
     const name = el<HTMLInputElement>("userName")?.value.trim() ?? "";
