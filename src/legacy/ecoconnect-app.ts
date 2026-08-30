@@ -205,10 +205,14 @@ export function initEcoConnect(): () => void {
 
   /* ---------------- location ---------------- */
   function reverseGeocode(lat: number, lon: number): Promise<string> {
+    const fallback = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 7000);
     return fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14`,
+      { signal: ctrl.signal, headers: { Accept: "application/json" } },
     )
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("geocode failed"))))
       .then((d) => {
         const a = d.address || {};
         return (
@@ -219,16 +223,54 @@ export function initEcoConnect(): () => void {
           a.state_district ||
           a.city ||
           d.display_name ||
-          `${lat.toFixed(3)}, ${lon.toFixed(3)}`
+          fallback
         );
       })
-      .catch(() => `${lat.toFixed(3)}, ${lon.toFixed(3)}`);
+      .catch(() => fallback)
+      .finally(() => clearTimeout(timer));
+  }
+
+  function geoErrorMessage(err: GeolocationPositionError | null): string {
+    if (!window.isSecureContext) {
+      return "🚫 Location needs a secure (https) connection. Open the site over https and try again.";
+    }
+    switch (err?.code) {
+      case 1:
+        return '🚫 Location permission denied — allow location for this site in your browser settings, then tap "Use My Current Location" again.';
+      case 2:
+        return "🚫 Location signal unavailable — turn on device GPS / location services (and move near a window) and try again.";
+      case 3:
+        return "⏱️ Location request timed out — please try again.";
+      default:
+        return "🚫 Could not detect your location. Try again, or type your area name manually below.";
+    }
+  }
+
+  function getPosition(options: PositionOptions): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, options),
+    );
+  }
+
+  // Tries high accuracy first, then falls back to a cached / low-accuracy fix.
+  async function requestPosition(): Promise<GeolocationPosition> {
+    try {
+      return await getPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+    } catch (err) {
+      const code = (err as GeolocationPositionError)?.code;
+      if (code === 1) throw err;
+      return await getPosition({
+        enableHighAccuracy: false,
+        timeout: 20000,
+        maximumAge: 300000,
+      });
+    }
   }
 
   (function initHeaderLocation() {
     const pill = el("headerLocation");
     if (!pill) return;
-    if (!navigator.geolocation) {
+    if (!navigator.geolocation || !window.isSecureContext) {
       pill.textContent = "📍 Location unavailable";
       return;
     }
@@ -242,37 +284,42 @@ export function initEcoConnect(): () => void {
           name,
         };
       },
-      () => {
-        pill.textContent = "📍 Location access denied";
+      (err) => {
+        pill.textContent = err?.code === 1 ? "📍 Location access denied" : "📍 Location unavailable";
       },
-      { timeout: 8000 },
+      { timeout: 15000, maximumAge: 300000 },
     );
   })();
 
-  function detectLocation() {
+  let detectingLocation = false;
+
+  async function detectLocation() {
     const box = el("locBox");
     if (!box) return;
-    if (!navigator.geolocation) {
-      box.textContent = "Geolocation not supported on this device — location pin is required.";
+    if (!navigator.geolocation || !window.isSecureContext) {
+      box.textContent = geoErrorMessage(null);
       return;
     }
-    box.textContent = "Detecting your location…";
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        const name = await reverseGeocode(lat, lon);
-        state.detectedLocation = { lat, lon, name };
-        state.reportLocationPinned = true;
-        box.textContent = `📍 ${name} (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
-        const locName = el<HTMLInputElement>("locName");
-        if (locName) locName.value = name;
-      },
-      () => {
-        state.reportLocationPinned = false;
-        box.textContent =
-          '🚫 Location permission denied — please allow location access and tap "Use My Current Location" again. This step is required to submit.';
-      },
-    );
+    if (detectingLocation) return;
+    detectingLocation = true;
+    box.textContent = "Detecting your location… (allow the permission popup)";
+    try {
+      const pos = await requestPosition();
+      const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+      box.textContent = "📍 Location found, looking up the area name…";
+      const name = await reverseGeocode(lat, lon);
+      state.detectedLocation = { lat, lon, name };
+      state.reportLocationPinned = true;
+      const acc = accuracy ? ` · ±${Math.round(accuracy)}m` : "";
+      box.textContent = `📍 ${name} (${lat.toFixed(4)}, ${lon.toFixed(4)})${acc}`;
+      const locName = el<HTMLInputElement>("locName");
+      if (locName && !locName.value.trim()) locName.value = name;
+    } catch (err) {
+      state.reportLocationPinned = false;
+      box.textContent = geoErrorMessage(err as GeolocationPositionError);
+    } finally {
+      detectingLocation = false;
+    }
   }
 
   /* ---------------- steps + sign in ---------------- */
