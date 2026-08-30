@@ -480,7 +480,11 @@ export function initEcoConnect(): () => void {
 
   async function startVideoRecording() {
     try {
-      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      recStream = await navigator.mediaDevices.getUserMedia({
+        video: videoConstraint(),
+        audio: true,
+      });
+
       const v = el<HTMLVideoElement>("vidPreview");
       if (v) {
         v.srcObject = recStream;
