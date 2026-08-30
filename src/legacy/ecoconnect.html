@@ -332,6 +332,7 @@
             <div class="rec-timer" id="recTimer" style="display:none;">00:00 / 02:00</div>
             <div id="vidControls">
               <button class="btn btn-outline btn-sm" onclick="startVideoRecording()">Start Recording</button>
+              <button class="btn btn-ghost btn-sm" id="vidSwitchBtn" onclick="switchCamera()">🔄 Switch Camera</button>
               <button class="btn btn-amber btn-sm" id="stopRecBtn" style="display:none;" onclick="stopVideoRecording()">Stop</button>
             </div>
             <div id="videoThumbs" class="thumb-row"></div>
@@ -467,6 +468,7 @@
     <div class="qr-actions">
       <button class="btn btn-primary btn-sm" id="qrStartBtn" onclick="qrStart()">⏺ Start Recording</button>
       <button class="btn btn-amber btn-sm" id="qrStopBtn" style="display:none;" onclick="qrStop()">⏹ Stop</button>
+      <button class="btn btn-outline-light btn-sm" id="qrSwitchBtn" onclick="switchCamera()">🔄 Back cam</button>
       <button class="btn btn-ghost btn-sm" onclick="closeQuickRecord()">Cancel</button>
     </div>
   </div>

@@ -935,6 +935,7 @@ export function initEcoConnect(): () => void {
     sendOtp,
     verifyOtp,
     openCamera,
+    switchCamera,
     takePhoto,
     closeCamera,
     startVideoRecording,
