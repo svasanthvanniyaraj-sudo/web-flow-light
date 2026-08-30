@@ -538,18 +538,29 @@ export function initEcoConnect(): () => void {
   let qrSeconds = 0;
   let qrInterval: ReturnType<typeof setInterval> | undefined;
 
+  async function restartQuickRecordStream() {
+    qrStream?.getTracks().forEach((t) => t.stop());
+    qrStream = await navigator.mediaDevices.getUserMedia({
+      video: videoConstraint(),
+      audio: true,
+    });
+    const v = el<HTMLVideoElement>("qrVideo");
+    if (v) v.srcObject = qrStream;
+    const sw = el("qrSwitchBtn");
+    if (sw) sw.textContent = `🔄 ${facingLabel()} cam`;
+  }
+
   async function openQuickRecord() {
     const overlay = el("qrOverlay");
     if (overlay) overlay.classList.add("show");
     try {
-      qrStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      const v = el<HTMLVideoElement>("qrVideo");
-      if (v) v.srcObject = qrStream;
+      await restartQuickRecordStream();
     } catch {
       showToast("🚫", "Camera unavailable", "Allow camera & microphone access to record a clip.");
       closeQuickRecord();
     }
   }
+
 
   function closeQuickRecord() {
     if (qrRecorder && qrRecorder.state !== "inactive") qrRecorder.stop();
