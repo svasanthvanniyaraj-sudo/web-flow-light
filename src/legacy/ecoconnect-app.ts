@@ -287,10 +287,16 @@ export function initEcoConnect(): () => void {
     }
   }
 
-  // Demo mode: SMS provider is not configured yet, so a fixed sample OTP is used.
-  const SAMPLE_OTP = "123456";
+  // Demo mode: SMS provider is not configured yet, so a random OTP is generated per request.
+  const generateOtp = () => {
+    const bytes = new Uint32Array(1);
+    crypto.getRandomValues(bytes);
+    return String(100000 + ((bytes[0] ?? 0) % 900000));
+  };
+  let currentOtp = "";
   const demoEmail = (mobile: string) => `user${mobile}@ecoconnect.demo`;
   const demoPassword = (mobile: string) => `EcoConnect#${mobile}`;
+
 
   async function sendOtp() {
     const name = el<HTMLInputElement>("userName")?.value.trim() ?? "";
@@ -313,6 +319,7 @@ export function initEcoConnect(): () => void {
       btn.disabled = false;
       btn.textContent = "📲 Send OTP";
     }
+    currentOtp = generateOtp();
     state.pendingMobile = mobile;
     state.pendingName = name;
     const otpField = el("otpField");
@@ -323,8 +330,8 @@ export function initEcoConnect(): () => void {
     if (input) input.value = "";
     const hint = el("otpHint");
     if (hint)
-      hint.textContent = `Demo mode: SMS is not enabled yet. Use the sample OTP ${SAMPLE_OTP} for +91 ${mobile}.`;
-    showToast("📲", "Sample OTP", `Use ${SAMPLE_OTP} to verify ${mobile}.`);
+      hint.textContent = `Demo mode: SMS is not enabled yet. Your OTP is ${currentOtp} for +91 ${mobile}.`;
+    showToast("📲", "Your OTP", `Use ${currentOtp} to verify ${mobile}.`);
   }
 
   async function verifyOtp() {
@@ -333,8 +340,8 @@ export function initEcoConnect(): () => void {
       showToast("⚠️", "Send OTP first", 'Tap "Send OTP" before verifying.');
       return;
     }
-    if (entered !== SAMPLE_OTP) {
-      showToast("🚫", "Incorrect OTP", `Sample OTP is ${SAMPLE_OTP}.`);
+    if (!currentOtp || entered !== currentOtp) {
+      showToast("🚫", "Incorrect OTP", "The OTP you entered is wrong. Please try again.");
       return;
     }
     const email = demoEmail(state.pendingMobile);
