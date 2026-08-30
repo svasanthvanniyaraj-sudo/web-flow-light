@@ -379,20 +379,30 @@ export function initEcoConnect(): () => void {
     goStep(2);
   }
 
+  /* ---------------- camera facing ---------------- */
+  let facingMode: "user" | "environment" = "environment";
+  const videoConstraint = () => ({ facingMode: { ideal: facingMode } });
+  const facingLabel = () => (facingMode === "environment" ? "Back" : "Front");
+
   /* ---------------- photo capture ---------------- */
   let camStream: MediaStream | null = null;
+  function camControlsMarkup() {
+    return `<button class="btn btn-primary btn-sm" onclick="takePhoto()">📸 Capture</button>
+       <button class="btn btn-outline btn-sm" onclick="switchCamera()">🔄 ${facingLabel()} cam</button>
+       <button class="btn btn-ghost btn-sm" onclick="closeCamera()">Close</button>`;
+  }
+
   async function openCamera() {
     try {
-      camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      camStream?.getTracks().forEach((t) => t.stop());
+      camStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint() });
       const v = el<HTMLVideoElement>("camVideo");
       if (v) {
         v.srcObject = camStream;
         v.style.display = "block";
       }
       const controls = el("camControls");
-      if (controls)
-        controls.innerHTML = `<button class="btn btn-primary btn-sm" onclick="takePhoto()">📸 Capture</button>
-       <button class="btn btn-ghost btn-sm" onclick="closeCamera()">Close</button>`;
+      if (controls) controls.innerHTML = camControlsMarkup();
     } catch {
       showToast(
         "🚫",
@@ -401,6 +411,14 @@ export function initEcoConnect(): () => void {
       );
     }
   }
+
+  async function switchCamera() {
+    facingMode = facingMode === "environment" ? "user" : "environment";
+    if (camStream) await openCamera();
+    if (qrStream && (!qrRecorder || qrRecorder.state === "inactive")) await restartQuickRecordStream();
+    showToast("🔄", "Camera switched", `Now using the ${facingLabel().toLowerCase()} camera.`);
+  }
+
 
   function takePhoto() {
     const v = el<HTMLVideoElement>("camVideo");
@@ -462,7 +480,11 @@ export function initEcoConnect(): () => void {
 
   async function startVideoRecording() {
     try {
-      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      recStream = await navigator.mediaDevices.getUserMedia({
+        video: videoConstraint(),
+        audio: true,
+      });
+
       const v = el<HTMLVideoElement>("vidPreview");
       if (v) {
         v.srcObject = recStream;
@@ -520,18 +542,29 @@ export function initEcoConnect(): () => void {
   let qrSeconds = 0;
   let qrInterval: ReturnType<typeof setInterval> | undefined;
 
+  async function restartQuickRecordStream() {
+    qrStream?.getTracks().forEach((t) => t.stop());
+    qrStream = await navigator.mediaDevices.getUserMedia({
+      video: videoConstraint(),
+      audio: true,
+    });
+    const v = el<HTMLVideoElement>("qrVideo");
+    if (v) v.srcObject = qrStream;
+    const sw = el("qrSwitchBtn");
+    if (sw) sw.textContent = `🔄 ${facingLabel()} cam`;
+  }
+
   async function openQuickRecord() {
     const overlay = el("qrOverlay");
     if (overlay) overlay.classList.add("show");
     try {
-      qrStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      const v = el<HTMLVideoElement>("qrVideo");
-      if (v) v.srcObject = qrStream;
+      await restartQuickRecordStream();
     } catch {
       showToast("🚫", "Camera unavailable", "Allow camera & microphone access to record a clip.");
       closeQuickRecord();
     }
   }
+
 
   function closeQuickRecord() {
     if (qrRecorder && qrRecorder.state !== "inactive") qrRecorder.stop();
@@ -902,6 +935,7 @@ export function initEcoConnect(): () => void {
     sendOtp,
     verifyOtp,
     openCamera,
+    switchCamera,
     takePhoto,
     closeCamera,
     startVideoRecording,
