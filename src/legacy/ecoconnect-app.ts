@@ -287,6 +287,11 @@ export function initEcoConnect(): () => void {
     }
   }
 
+  // Demo mode: SMS provider is not configured yet, so a fixed sample OTP is used.
+  const SAMPLE_OTP = "123456";
+  const demoEmail = (mobile: string) => `user${mobile}@ecoconnect.demo`;
+  const demoPassword = (mobile: string) => `EcoConnect#${mobile}`;
+
   async function sendOtp() {
     const name = el<HTMLInputElement>("userName")?.value.trim() ?? "";
     const mobile = el<HTMLInputElement>("userMobile")?.value.trim() ?? "";
@@ -303,14 +308,10 @@ export function initEcoConnect(): () => void {
       btn.disabled = true;
       btn.textContent = "Sending OTP…";
     }
-    const { error } = await supabase.auth.signInWithOtp({ phone: "+91" + mobile });
+    await new Promise((r) => setTimeout(r, 400));
     if (btn) {
       btn.disabled = false;
       btn.textContent = "📲 Send OTP";
-    }
-    if (error) {
-      showToast("🚫", "Could not send OTP", error.message);
-      return;
     }
     state.pendingMobile = mobile;
     state.pendingName = name;
@@ -321,8 +322,9 @@ export function initEcoConnect(): () => void {
     const input = el<HTMLInputElement>("otpInput");
     if (input) input.value = "";
     const hint = el("otpHint");
-    if (hint) hint.textContent = `OTP sent by SMS to +91 ${mobile}. It expires in a few minutes.`;
-    showToast("📲", "OTP sent", `A 6-digit OTP was sent to ${mobile}.`);
+    if (hint)
+      hint.textContent = `Demo mode: SMS is not enabled yet. Use the sample OTP ${SAMPLE_OTP} for +91 ${mobile}.`;
+    showToast("📲", "Sample OTP", `Use ${SAMPLE_OTP} to verify ${mobile}.`);
   }
 
   async function verifyOtp() {
@@ -331,17 +333,36 @@ export function initEcoConnect(): () => void {
       showToast("⚠️", "Send OTP first", 'Tap "Send OTP" before verifying.');
       return;
     }
-    if (!/^\d{4,8}$/.test(entered)) {
-      showToast("⚠️", "Enter the OTP", "Type the code from the SMS.");
+    if (entered !== SAMPLE_OTP) {
+      showToast("🚫", "Incorrect OTP", `Sample OTP is ${SAMPLE_OTP}.`);
       return;
     }
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone: "+91" + state.pendingMobile,
-      token: entered,
-      type: "sms",
-    });
-    if (error || !data.user) {
-      showToast("🚫", "Incorrect OTP", error?.message ?? "That code did not match. Try again.");
+    const email = demoEmail(state.pendingMobile);
+    const password = demoPassword(state.pendingMobile);
+    let { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      const signUp = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: state.pendingName ?? "Citizen", mobile: state.pendingMobile } },
+      });
+      if (signUp.error || !signUp.data.user) {
+        showToast("🚫", "Sign in failed", signUp.error?.message ?? "Please try again.");
+        return;
+      }
+      if (!signUp.data.session) {
+        const retry = await supabase.auth.signInWithPassword({ email, password });
+        if (retry.error || !retry.data.user) {
+          showToast("🚫", "Sign in failed", retry.error?.message ?? "Please try again.");
+          return;
+        }
+        data = retry.data;
+      } else {
+        data = { user: signUp.data.user, session: signUp.data.session };
+      }
+    }
+    if (!data?.user) {
+      showToast("🚫", "Sign in failed", "Please try again.");
       return;
     }
     state.userId = data.user.id;
